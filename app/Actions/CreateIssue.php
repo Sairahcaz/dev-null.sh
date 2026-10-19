@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\Extension\CommonMark\Node\Block\Heading;
+use League\CommonMark\Node\Node;
 use League\CommonMark\Node\StringContainerHelper;
 use League\CommonMark\Parser\MarkdownParser;
 
@@ -33,20 +34,20 @@ final readonly class CreateIssue
         $markdown = new Environment();
         $markdown->addExtension(new CommonMarkCoreExtension());
 
-        foreach (new MarkdownParser($markdown)->parse($body)->children() as $node) {
-            if (! $node instanceof Heading || $node->getLevel() !== 1) {
-                continue;
-            }
+        $heading = collect([...new MarkdownParser($markdown)->parse($body)->children()])
+            ->first(fn (Node $node): bool => $node instanceof Heading && $node->getLevel() === 1);
 
-            $title = StringContainerHelper::getChildText($node);
-            $start = $node->getStartLine();
-            $end = $node->getEndLine();
+        if ($heading instanceof Heading) {
+            $title = StringContainerHelper::getChildText($heading);
+            $start = $heading->getStartLine();
+            $end = $heading->getEndLine();
             assert(is_int($start) && is_int($end));
-            $lines = explode("\n", $body);
-            array_splice($lines, $start - 1, $end - $start + 1);
-            $body = mb_trim(implode("\n", $lines), "\n");
-
-            break;
+            $body = Str::trim(
+                Str::of($body)->explode("\n")
+                    ->except(range($start - 1, $end - 1))
+                    ->implode("\n"),
+                "\n",
+            );
         }
 
         return $this->github->createIssue(
