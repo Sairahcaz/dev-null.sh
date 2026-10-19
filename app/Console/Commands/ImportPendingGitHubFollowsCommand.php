@@ -7,19 +7,27 @@ namespace App\Console\Commands;
 use App\Actions\CreatePendingFollows;
 use App\Actions\CreateUserGitHubFollows;
 use App\Models\User;
+use App\Queries\GitHubRateLimitQuery;
 use App\Services\GitHub;
+use Carbon\CarbonImmutable;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Sleep;
 
 #[Signature('follows:pending {--after= : Only the users after this ID, to resume a run GitHub rate limited}')]
 #[Description('Remember, for every user whose GitHub follows were imported, the accounts they follow on GitHub that are not on /dev/null yet')]
 final class ImportPendingGitHubFollowsCommand extends Command
 {
-    public function handle(GitHub $github, CreatePendingFollows $createPendingFollows): int
+    /**
+     * The requests left to the rest of the app, which shares the rate limit: sign-ins import their follows from it.
+     */
+    private const int Reserve = 2000;
+
+    public function handle(GitHub $github, CreatePendingFollows $createPendingFollows, GitHubRateLimitQuery $rateLimit): int
     {
         $imported = 0;
         $failed = 0;
@@ -31,12 +39,11 @@ final class ImportPendingGitHubFollowsCommand extends Command
             ->when(is_string($after), fn (Builder $query): Builder => $query->where('id', '>', $after));
 
         foreach ($users->lazyById() as $user) {
-            try {
-                $login = $github->login($user->github_id);
+            $this->waitForRateLimit($rateLimit);
 
-                if ($login !== null) {
-                    $createPendingFollows->handle($user, $github->accountIds("users/{$login}/following", CreateUserGitHubFollows::MaxPages));
-                }
+            try {
+                // The username is the GitHub login, as of their last sign-in, which saves looking it up by ID...
+                $createPendingFollows->handle($user, $github->accountIds("users/{$user->username}/following", CreateUserGitHubFollows::MaxPages));
 
                 $imported++;
             } catch (RequestException $exception) {
@@ -48,9 +55,12 @@ final class ImportPendingGitHubFollowsCommand extends Command
                     return self::FAILURE;
                 }
 
-                $this->failed($user, $exception);
+                // ...and an account renamed or deleted since then is skipped.
+                if ($exception->response->status() !== 404) {
+                    $this->failed($user, $exception);
 
-                $failed++;
+                    $failed++;
+                }
             } catch (ConnectionException $exception) {
                 $this->failed($user, $exception);
 
@@ -63,6 +73,25 @@ final class ImportPendingGitHubFollowsCommand extends Command
         $this->components->info("Remembered the pending GitHub follows of {$imported} users.");
 
         return $failed === 0 ? self::SUCCESS : self::FAILURE;
+    }
+
+    /**
+     * Waits for the rate limit to reset once it gets down to the reserve, and a minute more, so the cached read of the
+     * rate limit is a fresh one by then.
+     */
+    private function waitForRateLimit(GitHubRateLimitQuery $rateLimit): void
+    {
+        $limit = $rateLimit->isConfigured() ? $rateLimit->get() : null;
+
+        if ($limit === null || $limit['remaining'] >= self::Reserve) {
+            return;
+        }
+
+        $resumesAt = CarbonImmutable::parse($limit['resets_at'])->addMinute();
+
+        $this->components->info("Leaving the rest of the GitHub rate limit to the app until {$resumesAt->toTimeString()}.");
+
+        Sleep::until($resumesAt);
     }
 
     private function failed(User $user, RequestException|ConnectionException $exception): void
