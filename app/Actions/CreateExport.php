@@ -30,7 +30,7 @@ final readonly class CreateExport
     /**
      * Everything stored about the user, deleted commits included, but never secrets like the remember token or session ids.
      *
-     * @return array{schema_version: int, exported_at: string, profile: array<string, bool|int|string|null>, commits: Generator<int, array<string, mixed>>, polls: Generator<int, array{commit_id: string, duration_minutes: int, opened_at: string|null, options: list<string>, created_at: string}>, poll_votes: Generator<int, array{commit_id: string, option: string, created_at: string}>, stars: Generator<int, string>, bookmarks: Generator<int, string>, following: Generator<int, array{username: string}>, followers: Generator<int, array{username: string}>, waiting_to_follow: Generator<int, array{github_id: string}>, muting: Generator<int, array{username: string}>, blocking: Generator<int, array{username: string}>, messages: Generator<int, array{to: string|null, body: string, created_at: string}>, notifications: Generator<int, array<string, string|null>>, ssh_keys: array<mixed>, devices: array<int, array{name: string, fingerprint: string, approved_at: string, last_used_at: string|null}>, sessions: Collection<int, stdClass>}
+     * @return array{schema_version: int, exported_at: string, profile: array<string, bool|int|string|null>, commits: Generator<int, array<string, mixed>>, polls: Generator<int, array{commit_id: string, duration_minutes: int, opened_at: string|null, options: list<string>, created_at: string}>, poll_votes: Generator<int, array{commit_id: string, option: string, created_at: string}>, stars: Generator<int, string>, bookmarks: Generator<int, string>, following: Generator<int, array{username: string}>, followers: Generator<int, array{username: string}>, waiting_to_follow: Generator<int, string>, muting: Generator<int, array{username: string}>, blocking: Generator<int, array{username: string}>, messages: Generator<int, array{to: string|null, body: string, created_at: string}>, notifications: Generator<int, array<string, string|null>>, ssh_keys: array<mixed>, devices: array<int, array{name: string, fingerprint: string, approved_at: string, last_used_at: string|null}>, sessions: Collection<int, stdClass>}
      */
     public function handle(User $user): array
     {
@@ -224,12 +224,12 @@ final readonly class CreateExport
     /**
      * The GitHub accounts the user follows there that aren't on /dev/null yet, by GitHub ID, which is all that is kept.
      *
-     * @return Generator<int, array{github_id: string}>
+     * @return Generator<int, string>
      */
     private function waitingToFollow(User $user): Generator
     {
-        foreach ($user->pendingFollows()->lazyById(500) as $pending) {
-            yield ['github_id' => $pending->github_id];
+        foreach ($user->pendingFollows()->select(['id', 'github_id'])->lazyById(500) as $pending) {
+            yield $pending->github_id;
         }
     }
 

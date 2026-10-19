@@ -289,7 +289,7 @@ it('exports following and follower usernames, and the github accounts the user w
 
     expect($data['following'])->toBe([['username' => 'demo-developer']])
         ->and($data['followers'])->toBe([['username' => 'demo-follower']])
-        ->and($data['waiting_to_follow'])->toBe([['github_id' => '583231']])
+        ->and($data['waiting_to_follow'])->toBe(['583231'])
         ->and($response->streamedContent())->not->toContain(
             $followed->email, $followed->github_id, $followed->id, $followed->remember_token,
             $follower->email, $follower->id, $stranger->username,
