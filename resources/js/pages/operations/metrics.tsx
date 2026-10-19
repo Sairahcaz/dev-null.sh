@@ -101,13 +101,11 @@ function Rate({
     label,
     change,
     isWorst,
-    hasHistory,
 }: {
     rate: number | null;
     label: string;
     change: number | null;
     isWorst: boolean;
-    hasHistory: boolean;
 }) {
     return (
         <div
@@ -120,18 +118,16 @@ function Rate({
                 {percent(rate)}
             </p>
             <p className="text-muted-foreground">{label}</p>
-            <p
-                className={cn(
-                    'tabular-nums',
-                    isWorst ? 'font-semibold' : 'text-muted-foreground',
-                )}
-            >
-                {change !== null
-                    ? `${change >= 0 ? '+' : '−'}${Math.abs(change * 100).toFixed(1)} pt`
-                    : hasHistory
-                      ? '–'
-                      : 'not enough history'}
-            </p>
+            {change !== null && (
+                <p
+                    className={cn(
+                        'tabular-nums',
+                        isWorst ? 'font-semibold' : 'text-muted-foreground',
+                    )}
+                >
+                    {`${change >= 0 ? '+' : '−'}${Math.abs(change * 100).toFixed(1)} pt`}
+                </p>
+            )}
         </div>
     );
 }
@@ -210,7 +206,6 @@ function FunnelValue({ funnel }: { funnel: Funnel }) {
     const changes = Object.entries(funnel.changes).filter(
         (entry): entry is [FunnelRate, number] => entry[1] !== null,
     );
-    const hasHistory = changes.length > 0;
     const worst = changes
         .filter(([, change]) => change < 0)
         .sort(([, a], [, b]) => a - b)[0]?.[0];
@@ -221,7 +216,6 @@ function FunnelValue({ funnel }: { funnel: Funnel }) {
             label={label}
             change={funnel.changes[key]}
             isWorst={worst === key}
-            hasHistory={hasHistory}
         />
     );
 

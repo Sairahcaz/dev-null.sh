@@ -81,7 +81,7 @@ The funnel follows the people who **signed up in the selected range** (all time 
 
 - **All time**: changes compare the **last 7 days with the 7 before**. Retention compares the signups whose day N is in the last 7 days with the 7 before, at the same day N.
 - **A chosen range**: changes compare the range with **the same number of days just before it**, retention at the same day N.
-- Changes show **"not enough history"** until the period before starts after the first signup.
+- Changes are left out until the period before starts after the first signup: without history there is nothing to compare.
 - **Orange** marks the rate that dropped the most. It is not the lowest rate: rates of different steps can't be compared (a conversion rate from anonymous visitors is always low), so a level only means something against its own past or its own benchmark.
 
 ## Also watch (implemented)
