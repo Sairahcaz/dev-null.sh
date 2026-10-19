@@ -1,6 +1,6 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import { CornerDownRight, Trash2 } from 'lucide-react';
-import type { PointerEvent, ReactNode } from 'react';
+import type { MouseEvent, PointerEvent, ReactNode } from 'react';
 import { useRef, useState } from 'react';
 import CommitController from '@/actions/App/Http/Controllers/CommitController';
 import CommitLinkPreviewController from '@/actions/App/Http/Controllers/CommitLinkPreviewController';
@@ -26,6 +26,7 @@ import {
     RailSegment,
 } from '@/components/graph-rail';
 import { LinkPreview } from '@/components/link-preview';
+import { LiveStreamTrigger } from '@/components/live-stream-card';
 import { QuotedCommit } from '@/components/quoted-commit';
 import {
     ThreadPositionBadge,
@@ -44,6 +45,7 @@ import {
     useIsCommitDeleted,
 } from '@/hooks/use-deleted-resources';
 import { useNow } from '@/hooks/use-now';
+import { clickedCommit } from '@/lib/commit-click';
 import { commitMutationOptions } from '@/lib/commit-mutation-options';
 import {
     cn,
@@ -60,6 +62,7 @@ import type { Commit, CursorPaginated, ThreadCommit } from '@/types';
 export function CommitCard({
     commit,
     previousLane,
+    nextLane,
     isDimmed = false,
     isPreviousDimmed = false,
     isHighlighted = false,
@@ -82,6 +85,7 @@ export function CommitCard({
 }: {
     commit: Commit;
     previousLane?: string;
+    nextLane?: string;
     isDimmed?: boolean;
     isPreviousDimmed?: boolean;
     isHighlighted?: boolean;
@@ -128,6 +132,20 @@ export function CommitCard({
     const hash = shortHash(commit.id);
     const permalink = CommitController.show({ user: commit.user, commit });
 
+    const openClickedCommit = (event: MouseEvent<HTMLElement>) => {
+        const click = clickedCommit(
+            event,
+            window.getSelection()?.toString() ?? '',
+            window.location.pathname,
+        );
+
+        if (click?.newTab) {
+            window.open(click.url, '_blank', 'noopener');
+        } else if (click) {
+            router.visit(click.url);
+        }
+    };
+
     const cancelDeletion = () => {
         setDeletion('idle');
         deleteButtonRef.current?.focus();
@@ -161,7 +179,10 @@ export function CommitCard({
         <article
             className={cn(
                 'grid scroll-mt-28 transition-[grid-template-rows,opacity,background-color] duration-300 ease-out outline-none hover:bg-accent/50 focus-visible:bg-accent',
-                { 'bg-primary-soft/60': isHighlighted },
+                {
+                    'bg-primary-soft/60': isHighlighted,
+                    'cursor-pointer': !isFocused && !wasDeleted,
+                },
                 deletion === 'deleting'
                     ? 'grid-rows-[0fr] opacity-0 delay-400'
                     : 'grid-rows-[1fr]',
@@ -170,6 +191,8 @@ export function CommitCard({
             data-commit={commit.id}
             data-permalink={wasDeleted ? undefined : permalink.url}
             data-test="commit"
+            onClick={openClickedCommit}
+            onAuxClick={openClickedCommit}
             onPointerMove={
                 onHover &&
                 ((event) =>
@@ -181,6 +204,7 @@ export function CommitCard({
                 <GraphRail
                     lane={laneColor(commit.user.lane)}
                     previousLane={previousLane}
+                    nextLane={nextLane}
                     endsWithDot={endsWithDot}
                     nodePosition={railNodePosition}
                     hasTail={hasRailTail && railNodePosition !== 'bottom'}
@@ -197,22 +221,31 @@ export function CommitCard({
                             anchor={nodeRef}
                             className="flex"
                         >
-                            <Link
-                                ref={nodeRef}
-                                href={show(commit.user)}
-                                tabIndex={-1}
-                                className={cn('group/node flex rounded-full', {
-                                    'translate-y-[-9px]':
-                                        isGroupedWithPrevious &&
-                                        railNodePosition === 'top',
-                                })}
+                            <LiveStreamTrigger
+                                user={commit.user}
+                                hoverCard={false}
+                                className="flex"
                             >
-                                {isGroupedWithPrevious ? (
-                                    <RailDot className="group-hover/node:scale-125" />
-                                ) : (
-                                    <RailAvatar user={commit.user} />
-                                )}
-                            </Link>
+                                <Link
+                                    ref={nodeRef}
+                                    href={show(commit.user)}
+                                    tabIndex={-1}
+                                    className={cn(
+                                        'group/node flex rounded-full',
+                                        {
+                                            'translate-y-[-9px]':
+                                                isGroupedWithPrevious &&
+                                                railNodePosition === 'top',
+                                        },
+                                    )}
+                                >
+                                    {isGroupedWithPrevious ? (
+                                        <RailDot className="group-hover/node:scale-125" />
+                                    ) : (
+                                        <RailAvatar user={commit.user} />
+                                    )}
+                                </Link>
+                            </LiveStreamTrigger>
                         </UserPreview>
                     }
                 />
@@ -313,7 +346,7 @@ export function CommitCard({
                                                             'confirming',
                                                         )
                                                     }
-                                                    aria-label="Delete commit"
+                                                    aria-label="Revert commit"
                                                     className="-my-1 rounded-md p-1.5 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 sm:absolute sm:top-1/2 sm:-right-1.5 sm:my-0 sm:-translate-y-1/2 sm:opacity-0 sm:commit-hover:opacity-100 sm:commit-focus-within:opacity-100 [@media(hover:none)]:opacity-100"
                                                     data-test="delete-commit-button"
                                                 >
@@ -321,7 +354,7 @@ export function CommitCard({
                                                 </button>
                                             </TooltipTrigger>
                                             <TooltipContent>
-                                                Delete commit
+                                                Revert commit
                                             </TooltipContent>
                                         </Tooltip>
                                     )}

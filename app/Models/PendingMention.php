@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Carbon\CarbonInterface;
 use Database\Factories\PendingMentionFactory;
+use Illuminate\Database\Eloquent\Attributes\WithoutTimestamps;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,10 +17,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property-read int $id
  * @property-read string $commit_id
  * @property-read string $username
- * @property-read CarbonInterface $created_at
- * @property-read CarbonInterface $updated_at
  * @property-read Commit $commit
  */
+#[WithoutTimestamps]
 final class PendingMention extends Model
 {
     /** @use HasFactory<PendingMentionFactory> */

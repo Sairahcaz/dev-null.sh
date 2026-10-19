@@ -90,7 +90,8 @@ final readonly class CreateCommit
 
             $this->createWorldReply->handle($commit);
 
-            if ($commit->status === CommitStatus::Approved && isset($commit->mentions[CreateTomFriendship::USERNAME])
+            if ($commit->status === CommitStatus::Approved
+                && (isset($commit->mentions[CreateTomFriendship::USERNAME]) || $this->isDirectReplyToTom($parent))
                 && $user->github_id !== CreateTomFriendship::GITHUB_ID && filled(config('ai.providers.opencode.key'))) {
                 dispatch(new ReplyAsTom($commit->id));
             }
@@ -105,6 +106,11 @@ final readonly class CreateCommit
 
             return $commit;
         });
+    }
+
+    private function isDirectReplyToTom(?Commit $parent): bool
+    {
+        return $parent?->user?->github_id === CreateTomFriendship::GITHUB_ID;
     }
 
     /**

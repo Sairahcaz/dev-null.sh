@@ -25,10 +25,8 @@ final readonly class CreatePendingFollows
             return;
         }
 
-        $now = now();
-
         $user->pendingFollows()->insertOrIgnore(array_map(
-            fn (string $githubId): array => ['user_id' => $user->id, 'github_id' => $githubId, 'created_at' => $now, 'updated_at' => $now],
+            fn (string $githubId): array => ['user_id' => $user->id, 'github_id' => $githubId],
             $githubIds,
         ));
     }

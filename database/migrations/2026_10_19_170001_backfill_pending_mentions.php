@@ -29,11 +29,9 @@ return new class extends Migration
 
                 $registered = $users->map(fn (object $user): string => mb_strtolower($user->username))->all();
 
-                $now = now();
-
                 DB::table('pending_mentions')->insertOrIgnore($usernamesByCommit
                     ->flatMap(fn (array $usernames, string $id): array => array_map(
-                        fn (string $username): array => ['commit_id' => $id, 'username' => $username, 'created_at' => $now, 'updated_at' => $now],
+                        fn (string $username): array => ['commit_id' => $id, 'username' => $username],
                         array_values(array_diff($usernames, $registered)),
                     ))
                     ->all());

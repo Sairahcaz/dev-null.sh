@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Carbon\CarbonInterface;
 use Database\Factories\PendingFollowFactory;
+use Illuminate\Database\Eloquent\Attributes\WithoutTimestamps;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -15,9 +15,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property-read int $id
  * @property-read string $user_id
  * @property-read string $github_id
- * @property-read CarbonInterface $created_at
- * @property-read CarbonInterface $updated_at
  */
+#[WithoutTimestamps]
 final class PendingFollow extends Model
 {
     /** @use HasFactory<PendingFollowFactory> */

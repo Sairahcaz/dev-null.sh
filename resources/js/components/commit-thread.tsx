@@ -7,7 +7,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import type { CSSProperties, FormEvent, KeyboardEvent, ReactNode } from 'react';
-import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import CommitController from '@/actions/App/Http/Controllers/CommitController';
 import CommitLinkPreviewController from '@/actions/App/Http/Controllers/CommitLinkPreviewController';
@@ -70,6 +70,8 @@ import {
     formatRelativeTime,
     isDeleted,
     laneOf,
+    laneStrokeHold,
+    laneStrokeStyle,
 } from '@/lib/utils';
 import { show } from '@/routes/user';
 import type {
@@ -574,51 +576,105 @@ export function ThreadSpine({
         <span
             aria-hidden
             className={cn(
-                'absolute bottom-0 left-1/2 border-l border-dashed',
+                'absolute bottom-0 left-1/2 w-px -translate-x-1/2',
                 className,
             )}
-            style={{ borderColor: laneOf(thread.commit) }}
+            style={laneStrokeStyle(laneOf(thread.commit))}
             data-test="thread-spine"
         />
     );
 }
 
 const replyLink =
-    'absolute left-[calc(var(--indent)+12px)] border-l border-dashed sm:left-[calc(var(--indent)+14px)]';
+    'absolute left-[calc(var(--indent)+12px)] w-px sm:left-[calc(var(--indent)+14px)]';
 
 function ReplyLinks({
     previousLane,
+    parentLane,
     lane,
-    hasNext,
+    nextLane,
 }: {
     previousLane: string | null;
+    parentLane: string;
     lane: string;
-    hasNext: boolean;
+    nextLane: string | null;
 }) {
     return (
         <span aria-hidden>
             {previousLane === null ? (
-                <span
-                    className="absolute top-0 left-[calc(var(--spine)-0.5px)] h-[22px] w-[calc(var(--indent)-var(--spine)-3px)] rounded-bl-xl border-b border-l border-dashed border-(--lane) sm:h-6"
-                    data-test="thread-elbow"
-                />
+                <ThreadElbow from={parentLane} to={lane} />
             ) : (
                 <span
-                    className={cn(replyLink, 'top-0 h-1.5')}
-                    style={{ borderColor: previousLane }}
+                    className={cn(replyLink, 'top-0 h-[22px] sm:h-6')}
+                    style={laneStrokeStyle(lane)}
                     data-test="reply-link"
                 />
             )}
-            {hasNext && (
-                <span
-                    className={cn(
-                        replyLink,
-                        'top-[38px] bottom-0 sm:top-[42px]',
-                    )}
-                    style={{ borderColor: lane }}
+            {nextLane !== null && (
+                <ReplyTail
+                    from={lane}
+                    to={nextLane}
+                    className="top-[38px] bottom-0 sm:top-[42px]"
                 />
             )}
         </span>
+    );
+}
+
+function ReplyTail({
+    from,
+    to,
+    className,
+}: {
+    from: string;
+    to: string;
+    className?: string;
+}) {
+    return (
+        <span
+            className={cn(replyLink, className)}
+            style={laneStrokeStyle(from, to)}
+            data-test="reply-tail"
+        />
+    );
+}
+
+function ThreadElbow({ from, to }: { from: string; to: string }) {
+    const gradientId = `elbow-${useId().replaceAll(':', '')}`;
+    const hold = `${laneStrokeHold * 100}%`;
+
+    return (
+        <svg
+            aria-hidden
+            className="pointer-events-none absolute top-0 left-[calc(var(--spine)-0.5px)] h-[22px] w-[calc(var(--indent)-var(--spine)-3px)] overflow-visible sm:h-6"
+            viewBox="0 0 32 24"
+            preserveAspectRatio="none"
+            fill="none"
+            data-test="thread-elbow"
+        >
+            <defs>
+                <linearGradient
+                    id={gradientId}
+                    gradientUnits="objectBoundingBox"
+                    x1="0"
+                    y1="0"
+                    x2="1"
+                    y2="1"
+                >
+                    <stop offset="0%" stopColor={from} />
+                    <stop offset={hold} stopColor={from} />
+                    <stop offset="100%" stopColor={to} />
+                </linearGradient>
+            </defs>
+            {/* Quarter-circle corner matching rounded-bl-xl. */}
+            <path
+                d="M 0.5 0 L 0.5 12 Q 0.5 23.5 12.5 23.5 L 32 23.5"
+                stroke={from === to ? from : `url(#${gradientId})`}
+                strokeWidth="1"
+                strokeDasharray="2 2"
+                vectorEffect="non-scaling-stroke"
+            />
+        </svg>
     );
 }
 
@@ -665,10 +721,14 @@ export function ThreadReplies({
                                                 ? null
                                                 : laneOf(replies[index - 1])
                                         }
+                                        parentLane={laneOf(thread.commit)}
                                         lane={laneOf(reply)}
-                                        hasNext={
-                                            index < replies.length - 1 ||
-                                            thread.hasMore
+                                        nextLane={
+                                            index < replies.length - 1
+                                                ? laneOf(replies[index + 1])
+                                                : thread.hasMore
+                                                  ? laneOf(reply)
+                                                  : null
                                         }
                                     />
                                 )
@@ -685,13 +745,13 @@ export function ThreadReplies({
                                         replyLink,
                                         'top-0 h-5 sm:h-5.5',
                                     )}
-                                    style={{
-                                        borderColor: laneOf(
+                                    style={laneStrokeStyle(
+                                        laneOf(
                                             thread.replies[
                                                 thread.replies.length - 1
                                             ],
                                         ),
-                                    }}
+                                    )}
                                 />
                             )}
                             <MoreRepliesButton
@@ -813,7 +873,7 @@ function ReplyItem({
     if (isDeleted(reply)) {
         return (
             <article
-                className="relative pt-2.5 pl-(--indent)"
+                className="relative cursor-default pt-2.5 pl-(--indent)"
                 data-reply
                 data-test="reply-tombstone"
             >
@@ -923,12 +983,20 @@ function CommitReply({
 
     return (
         <article
-            className="relative pt-2.5 pl-(--indent)"
+            className={cn(
+                'relative pt-2.5 pl-(--indent)',
+                wasDeleted ? 'cursor-default' : 'cursor-pointer',
+            )}
             data-reply
+            data-permalink={wasDeleted ? undefined : permalink.url}
             data-test="reply"
         >
-            {links}
-            <div className="flex gap-2 sm:gap-2.5">
+            <div
+                className={cn(
+                    'relative isolate flex gap-2 before:absolute before:-inset-x-2 before:-top-1.5 before:-bottom-1.5 before:-z-10 before:rounded-lg before:transition-colors sm:gap-2.5',
+                    { 'reply-hover:before:bg-accent': !wasDeleted },
+                )}
+            >
                 <div className="relative shrink-0">
                     <UserPreview user={reply.user} anchor={avatarRef}>
                         <Link
@@ -1098,6 +1166,7 @@ function CommitReply({
                     )}
                 </div>
             </div>
+            {links}
 
             <ThreadReplies thread={thread} depth={depth} />
         </article>
@@ -1120,11 +1189,17 @@ function ReplyComposer({
         images,
         descriptions,
         isRestored,
+        key: stashKey,
         updateBody,
         updateImages,
         drop,
     } = useStash(user.id, `reply-${parent.id}`);
-    const attachments = useImageAttachments(images, descriptions, updateImages);
+    const attachments = useImageAttachments(
+        images,
+        descriptions,
+        updateImages,
+        stashKey,
+    );
     const linkCard = useLinkCard(body);
     const updateCommitsCount = useCommitsCountUpdate();
     const request = useHttp<
@@ -1172,7 +1247,12 @@ function ReplyComposer({
             onCancel();
         }
 
-        if (event.key === 'Enter' && hasModKey(event) && isReplyable) {
+        if (
+            event.key === 'Enter' &&
+            hasModKey(event) &&
+            isReplyable &&
+            !attachments.isReading()
+        ) {
             event.preventDefault();
             event.currentTarget.form?.requestSubmit();
         }
@@ -1181,7 +1261,11 @@ function ReplyComposer({
     const submit = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
-        if (request.processing || !secrets.beforeSubmit()) {
+        if (
+            request.processing ||
+            attachments.isReading() ||
+            !secrets.beforeSubmit()
+        ) {
             return;
         }
 
@@ -1293,7 +1377,8 @@ function ReplyComposer({
                     <ImagePickerButton
                         count={images.length}
                         disabled={processing}
-                        onPick={attachments.attach}
+                        reading={attachments.reading}
+                        onPick={attachments.pick}
                         className="size-8"
                     />
                     <PreviewToggle preview={preview} className="-ml-2 size-8" />
@@ -1328,7 +1413,7 @@ function ReplyComposer({
                 <Button
                     type="submit"
                     size="sm"
-                    disabled={processing || !isReplyable}
+                    disabled={processing || attachments.reading || !isReplyable}
                     className="min-w-19"
                     data-test="submit-reply-button"
                 >

@@ -25,10 +25,8 @@ final readonly class CreatePendingMentions
             return;
         }
 
-        $now = now();
-
         $commit->pendingMentions()->insertOrIgnore(array_map(
-            fn (string $username): array => ['commit_id' => $commit->id, 'username' => $username, 'created_at' => $now, 'updated_at' => $now],
+            fn (string $username): array => ['commit_id' => $commit->id, 'username' => $username],
             array_values($usernames),
         ));
     }

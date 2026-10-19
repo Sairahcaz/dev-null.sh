@@ -14,7 +14,6 @@ return new class extends Migration
             $table->id();
             $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
             $table->string('github_id');
-            $table->timestamps();
 
             $table->unique(['user_id', 'github_id']);
             $table->index(['github_id', 'id']);

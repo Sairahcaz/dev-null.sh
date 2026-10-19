@@ -14,7 +14,6 @@ return new class extends Migration
             $table->id();
             $table->foreignUuid('commit_id')->constrained()->cascadeOnDelete();
             $table->string('username');
-            $table->timestamps();
 
             $table->unique(['commit_id', 'username']);
             $table->index(['username', 'id']);
