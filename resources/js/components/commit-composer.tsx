@@ -225,6 +225,14 @@ function CommitComposerBody({
                                 isInDialog,
                         })}
                     >
+                        {issue.command && (
+                            <div
+                                aria-hidden="true"
+                                className="invisible col-start-1 row-start-1 max-h-[60dvh] overflow-hidden py-1.5 text-[17px] leading-relaxed whitespace-pre-wrap"
+                            >
+                                {issue.command.placeholder}
+                            </div>
+                        )}
                         <MentionTextarea
                             ref={textareaRef}
                             id={id}

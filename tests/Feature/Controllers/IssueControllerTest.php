@@ -52,6 +52,31 @@ it('opens the issue as the app, crediting the reporter, with the label of the co
     'bug' => ['/bug', 'bug'],
 ]);
 
+it('uses the first top-level heading as the title and preserves the remaining markdown', function (string $draft, string $title, string $body): void {
+    fakeGitHubApp();
+    $user = User::factory()->create(['username' => 'taylor']);
+
+    $this->actingAs($user)->postJson(route('issue.store'), ['command' => '/bug', 'body' => $draft])
+        ->assertCreated();
+
+    Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/issues')
+        && $request['title'] === $title
+        && $request['body'] === $body."\n\n---\n\nReported by @taylor via [/dev/null](".route('user.show', $user).').');
+})->with([
+    'template' => [
+        "# Search loses **filters**\n\n## Steps\n1. Select PHP.\n\n## Expected vs. actual\n- [ ] Keep `PHP` selected.\n\n| Expected | Actual |\n| --- | --- |\n| PHP | All |\n\n# More context\nSee ~~old~~ [search](/search).",
+        'Search loses filters',
+        "## Steps\n1. Select PHP.\n\n## Expected vs. actual\n- [ ] Keep `PHP` selected.\n\n| Expected | Actual |\n| --- | --- |\n| PHP | All |\n\n# More context\nSee ~~old~~ [search](/search).",
+    ],
+    'not a heading inside code or a quote' => [
+        "```sh\n# A comment\n```\n\n> # Quoted heading\n\n## Context\nBefore the title.\n\n# Actual title\n\nAfter the title.",
+        'Actual title',
+        "```sh\n# A comment\n```\n\n> # Quoted heading\n\n## Context\nBefore the title.\n\n\nAfter the title.",
+    ],
+    'heading only' => ['# A short report', 'A short report', ''],
+    'long heading' => ['# '.str_repeat('a', 300)."\n\nDetails.", str_repeat('a', 256), 'Details.'],
+]);
+
 it('folds the environment of the reporter into the body, ahead of the credit', function (): void {
     fakeGitHubApp();
     $user = User::factory()->create(['username' => 'taylor']);

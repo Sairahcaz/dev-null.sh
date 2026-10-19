@@ -403,6 +403,8 @@ Sources: [signed requests](app/Services/SignedRequests.php), [sign-in page](app/
 
 Start a fresh commit draft with **`/bug `** or **`/feature `** to switch it into an issue draft. Submitting opens a **public GitHub issue** on `nunomaduro/dev-null.sh`, crediting you, rather than posting a normal commit. The composer offers command suggestions and a way to cancel back to a commit. Issue drafts are text-only and accept 3–4,000 characters; remove detected secrets before submission.
 
+Empty issue drafts show a short Markdown template: steps and expected versus actual behavior for bugs, or the problem and proposal for features. The first top-level `# Heading` becomes the issue title and is removed from the body; the remaining Markdown is preserved. Without a heading, the first line is used as the title and the full draft remains in the body.
+
 Successful issue creation is limited to **five issues per hour per user**. If GitHub or the connection fails, the draft stays available. Check upstream before retrying an uncertain submission to avoid duplicates. Use a commit's Report control instead when reporting abusive content.
 
 Sources: [issue command UI](resources/js/components/issue-command.tsx), [issue validation](app/Http/Requests/CreateIssueRequest.php), [issue controller](app/Http/Controllers/IssueController.php).
