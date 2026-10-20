@@ -159,6 +159,8 @@ Sources: [log types](app/Enums/Log.php), [log queries](app/Queries/LogQueries), 
 
 Open search with **⌘/Ctrl+K** or **/**. Developer search finds people by name or GitHub username. Commit search, also available at `/search`, finds posts by meaning rather than requiring an exact phrase: describe the topic you want to read about. Commit queries must contain at least three characters and at most 100, and cover replies as well as top-level commits. An AI relevance check filters the nearest matches, so a search can return fewer results than asked. Results respect visibility, mutes, and blocks; semantic matching does not guarantee that every relevant commit will be returned. Guests can search too. Commit search is limited to 15 searches a minute per person (or per IP for guests).
 
+Signed-in users see their three most recent distinct searches above the suggested searches, newest first. Repeating a search moves it to the top; adding a fourth discards the oldest from storage, not just from the display. Recent searches stay in this browser, scoped to the signed-in account, and do not sync to other devices or create server-side history. They are cleared on sign-out or account deletion in that browser. Guests do not retain recent searches.
+
 The public search searches developers and commits, not this knowledge-base file. Feature documentation is available to the internal knowledge-base retriever once indexed; there is no public knowledge-base search endpoint yet.
 
 Sources: [search page](resources/js/pages/search/index.tsx), [commit search query](app/Queries/CommitSearchQuery.php), [search validation](app/Http/Requests/ListCommitSearchRequest.php), [knowledge-base query](app/Queries/KnowledgeBaseSearchQuery.php).
